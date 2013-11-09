@@ -368,6 +368,98 @@
  )
 )
 
+(defun closure-match (expression)
+  "Return the line and filename that matches the javascript expression."
+  (interactive)
+  (setq paths (list-join closure-projects " "))
+  (setq command (format "grep -RPHn \"%s\" %s 2> /dev/null | awk -F\: '{print $1,$2}'" expression paths))
+  ;; (message (format "Command: %s" command))
+  (split-string (first (split-string (shell-command-to-string command) "\n")) " ")
+  )
+
+(defun closure-provides-where (module)
+  "Return the line and filename where a goog.provide() was found"
+  (interactive)
+  (closure-match (format "^goog.provide\\('%s'\\);$" module))
+  )
+
+(defun closure-declaration-where (object value)
+  "Return the line and filename where value is found on object"
+  (interactive)
+  (closure-match (format "^%s(.prototype)?.%s( =|;)" object value))
+  )
+
+(defun closure-super-class (module)
+  "Get current super class, if any"
+  (interactive)
+  (setq file_name (if (string-match module (closure-class-name))
+                      (buffer-file-name)
+                    (closure-provides-where module)
+                    ))
+  ;; (message (format "File Name: %s" file_name))
+  (setq command (format "grep \"^goog.inherits\(%s, \" %s | sed 's/.*, \\\(.*\\\));/\\1/' | chomp" module file_name))
+  ;; (message (format "Command: %s, Filename: %s" command file_name))
+  (shell-command-to-string command)
+  )
+
+(defun closure-super-jump ()
+  (interactive)
+  (setq curr_class (closure-class-name))
+  (setq file_info (closure-provides-where (closure-super-class curr_class)))
+  ;; (message (format "FileInfo: %s" file_info))
+  (if (> (length file_info) 1)
+      (progn
+        (setq filename (pop file_info))
+        ;; (message (format "Filename: %s" file_name))
+        (setq line (pop file_info))
+        (find-file filename)
+        (goto-line (string-to-int line))
+        )
+    (error "No super class found %s" curr_class)
+    )
+  )
+
+(defun closure-current-module ()
+  "Get the object path up to the capitalized module/class name: foo.bar.Baz, or a.b.c, but not foo.bar.Baz.prototype"
+  (save-excursion
+    (skip-chars-backward "A-Za-z0-9_.")
+
+    (let ((start (point)) module curclass)
+      (skip-chars-forward "a-z0-9_.")
+      (skip-chars-forward "A-Za-z0-9_")
+      (buffer-substring-no-properties start (point)))))
+
+
+(defun closure-add-require-line (&optional module)
+  "Add a require line to the current module, if the module exists..."
+  (interactive)
+  (if (not module)
+      (setq module (closure-current-module)))
+  (if (string-match (format "goog.require('%s');" module)
+                    (buffer-substring (point-min) (point-max)))
+      (message "The module already is provided.")
+    (progn
+      (setq file_info (closure-provides-where module))
+      (if (> (length file_info) 1)
+          (progn
+            (end-of-buffer)
+            (search-backward "goog.provide(")
+            (next-line)
+            (next-line)
+            (beginning-of-line)
+            (insert (format "goog.require('%s');\n" module))
+            (closure-sort-require-lines)
+            (message "Now using %s goodness" module)
+            )
+        (error "File not found for module: %s" module)))))
+
+(defvar closure-projects)
+(defun reload-closure-projects ()
+  "Load the current list of projects."
+  (interactive)
+  (setq closure-projects (split-string (shell-command-to-string "cat ~/.emacs-closure-projects | grep -e '^$' -v") "\n"))
+  )
+(reload-closure-projects)
 
 (add-to-list 'auto-mode-alist '("\\.js\\'" . js2-mode))
 
@@ -380,10 +472,12 @@
 
 (defun closure-set-keybindings ()
  (local-set-key [(super c) ?a ?f] 'closure-abstract-function)
+ (local-set-key [(super c) ?a ?r] 'closure-add-require-line)
  (local-set-key [(super c) ?c ?c] 'closure-insert-current-class)
  (local-set-key [(super c) ?g ?b] 'closure-insert-goog-base)
  (local-set-key [(super c) ?n ?a] 'closure-attribute-prefix)
  (local-set-key [(super c) ?n ?f] 'closure-new-function)
+ (local-set-key [(super c) ?s ?c] 'closure-super-jump)
  (local-set-key [(super c) ?s ?f] 'closure-super-function)
  (local-set-key [(super c) ?s ?g] 'closure-insert-singleton-getter)
  (local-set-key [(super c) ?s ?r] 'closure-sort-requires-lines)
