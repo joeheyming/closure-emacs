@@ -39,7 +39,7 @@
 ;;    - Insert a new function at the cursor, but add /** inheritDoc */ and goog.base
 ;;  - super c s-g -> closure-insert-singleton-getter
 ;;    - Insert the singleton getter function at the cursor.
-;;  - super c s-r -> closure-sort-requires-lines
+;;  - super c s-r -> closure-sort-require-lines
 ;;   - Sort the require lines in the current module.
 ;;  - super c u-e -> closure-update-extends
 ;;   - If you change @extends, run this function and it will update goog.inherits as well as add the require line.
@@ -153,18 +153,6 @@
   )
 
 
-(defun closure-sort-require-lines ()
-  "Sorts import lines for actionscript files"
-  (interactive)
-  (beginning-of-buffer)
-  (search-forward-regexp "^goog.require")
-  (let ((beg) (end))
-    (beginning-of-line)
-    (setq beg (point))
-    (while (looking-at "goog.require") (forward-line 1))
-    (setq end (point))
-    (sort-lines nil beg end)))
-
 (defun closure-abstract-function ()
   "inserts boiler plate for new abstract closure function"
   (interactive)
@@ -212,7 +200,7 @@
   (insert (closure-class-name))
   )
 
-(defun closure-sort-requires-lines ()
+(defun closure-sort-require-lines ()
   "Sorts goog.require lines in Closure"
   (interactive)
   (beginning-of-buffer)
@@ -602,7 +590,7 @@
  (local-set-key [(super c) ?s ?c] 'closure-super-jump)
  (local-set-key [(super c) ?s ?f] 'closure-super-function)
  (local-set-key [(super c) ?s ?g] 'closure-insert-singleton-getter)
- (local-set-key [(super c) ?s ?r] 'closure-sort-requires-lines)
+ (local-set-key [(super c) ?s ?r] 'closure-sort-require-lines)
  (local-set-key [(super c) ?u ?e] 'closure-update-extends)
  (local-set-key [(super c) ?u ?j] 'closure-update-javadoc)
 
