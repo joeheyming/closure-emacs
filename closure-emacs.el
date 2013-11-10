@@ -489,9 +489,9 @@
   "Expression is: a word - Ex - foo, a function call - Ex foo(), a namespace - a.b.c"
   (save-excursion
     (let (beg variable)
-      (skip-chars-backward "A-Za-z0-9_.")
+      (skip-chars-backward "A-Za-z0-9_.[]()\"'")
       (setq beg (1- (point)))
-      (skip-chars-forward "A-Za-z0-9_.()")
+      (skip-chars-forward "A-Za-z0-9_.()[]\"'")
       (s-trim (buffer-substring beg (point))))))
 
 (defun message-current-expression () 
