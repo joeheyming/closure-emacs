@@ -1,4 +1,88 @@
+;; closure-emacs.el --- Google closure emacs helper functions.
+;;
+;; Author: Joe Heyming (joeheyming@gmail.com)
+;; Keywords: javascript, google closure
+
+;; This program is free software; you can redistribute it and/or
+;; modify it under the terms of the GNU General Public License as
+;; published by the Free Software Foundation; either version 2 of
+;; the License, or (at your option) any later version.
+
+;; This program is distributed in the hope that it will be
+;; useful, but WITHOUT ANY WARRANTY; without even the implied
+;; warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+;; PURPOSE.  See the GNU General Public License for more details.
+
+;;; Commentary:
+;;
+;; - This module works in conjunction with js2mode.
+;; - The module provides a js2mode hook where we apply key bindings if we detect we are in a closure file.
+;; - The keybindings all begin with super-c (c for closure)
+;; - The key bindings are as follows:
+;;  - super c a-f -> closure-abstract-function: 
+;;    - insert an abstract function at the cursor
+;;  - super c a-r -> closure-add-require-line
+;;    - Look at the current module under the cursor, and try to add it to the list of require lines at the top of the file.
+;;  - super c c-c -> closure-insert-current-class
+;;    - Insert the current class name at the cursor.
+;;  - super c c-f -> closure-constructor-function
+;;    - Insert the template for a constructor method based on the current module.
+;;  - super c g-b -> closure-insert-goog-base
+;;    - Insert goog.base. with the correct parameters at the top of the current function you are in.
+;;  - super c n-a -> closure-attribute-prefix
+;;    - Insert a new attribute at the cursor for the current module.
+;;  - super c n-f -> closure-new-function
+;;    - Insert a new function at the cursor for the current module.
+;;  - super c s-c -> closure-super-jump
+;;    - Go to the current super class. 
+;;  - super c s-f -> closure-super-function
+;;    - Insert a new function at the cursor, but add /** inheritDoc */ and goog.base
+;;  - super c s-g -> closure-insert-singleton-getter
+;;    - Insert the singleton getter function at the cursor.
+;;  - super c s-r -> closure-sort-requires-lines
+;;   - Sort the require lines in the current module.
+;;  - super c u-e -> closure-update-extends
+;;   - If you change @extends, run this function and it will update goog.inherits as well as add the require line.
+;;  - super c u-j -> closure-update-javadoc
+;;   - Update the javadoc with the current function parameters (if changed) and add @private or @return if needed.
+;;  - super c a-e -> closure-foreach-array
+;;   - Insert a goog.array.forEach at the cursor.  If an appropriate expression is found under the cursor, we try to use it as the first argument to the forEach function.
+;;  - super c a-t -> closure-foreach-array-this
+;;   - Insert a goog.array.forEach (bound to this) at the cursor.  If an appropriate expression is found under the cursor, we try to use it as the first argument to the forEach function.
+;;  - super c o-e -> closure-foreach-object
+;;   - Insert a goog.object.forEach at the cursor.  If an appropriate expression is found under the cursor, we try to use it as the first argument to the forEach function.
+;;  - super c o-t -> closure-foreach-object-this
+;;   - Insert a goog.object.forEach (bound to this) at the cursor.  If an appropriate expression is found under the cursor, we try to use it as the first argument to the forEach function.
+;;
+;; Installation:
+;;  - put closure-emacs.el somewhere in your emacs load path
+;;  - add these lines to your .emacs file:
+;;  (require 'closure-emacs)
+;; - Create a file under ~/.emacs-closure-projects
+;;  - Put your path to the google closure library:
+;; E.g. ~/git/closure-library/closure
+;; Put the path to your closure projects.
+
 (provide 'closure-emacs)
+
+; xxx utility functions xxx ;
+(defun s-trim-left (s)
+  "Remove whitespace at the beginning of S."
+  (if (string-match "\\`[ \t\n\r]+" s)
+      (replace-match "" t t s)
+    s))
+
+(defun s-trim-right (s)
+  "Remove whitespace at the end of S."
+  (if (string-match "[ \t\n\r]+\\'" s)
+      (replace-match "" t t s)
+    s))
+
+(defun s-trim (s)
+  "Remove whitespace at the beginning and end of S."
+  (s-trim-left (s-trim-right s)))
+; xxx utility functions xxx ;
+
 
 (defun closure-class-comment ()
   "Insert a class comment for an attribute"
@@ -33,17 +117,12 @@
   (insert (format "goog.addSingletonGetter(%s);\n" (closure-class-name))))
 
 (defun closure-foreach (for-format)
-  (setq variable (current-variable))
+  (setq variable (closure-current-expression))
   (end-of-line)
   (insert "\n")
+  (indent-according-to-mode)
   (insert (format for-format variable))
-  (search-backward-regexp "forEach")
-  (beginning-of-line)
-  (indent-according-to-mode)
-  (next-line)
-  (indent-according-to-mode)
-  (next-line)
-  (indent-according-to-mode)
+  (previous-line)
   (previous-line)
   )
 
@@ -113,7 +192,10 @@
   (save-excursion
     (progn
       ;; add comment params
-      (backward-line 2)
+      (beginning-of-line)
+      (backward-char)
+      (beginning-of-line)
+      (backward-char)
       (end-of-line)
       (insert (format "%s\n * @constructor\n * @extends {}" cname))
       )
@@ -187,24 +269,6 @@
                (push (match-string 1 line) params)))
          (forward-line 1))))
   params) ; return params
-
-; xxx utility functions xxx ;
-(defun s-trim-left (s)
-  "Remove whitespace at the beginning of S."
-  (if (string-match "\\`[ \t\n\r]+" s)
-      (replace-match "" t t s)
-    s))
-
-(defun s-trim-right (s)
-  "Remove whitespace at the end of S."
-  (if (string-match "[ \t\n\r]+\\'" s)
-      (replace-match "" t t s)
-    s))
-
-(defun s-trim (s)
-  "Remove whitespace at the beginning and end of S."
-  (s-trim-left (s-trim-right s)))
-; xxx utility functions xxx ;
 
 (defun closure-get-function-params ()
   "Return a list of all params in a function definition"
@@ -328,7 +392,7 @@
     (if (> (length params) 0)
         (progn
           (insert (format ", "))
-          (insert (list-join params ", ") )))
+          (insert (mapconcat 'identity params ", ") )))
     (insert ");")))
 
 
@@ -371,8 +435,8 @@
 (defun closure-match (expression)
   "Return the line and filename that matches the javascript expression."
   (interactive)
-  (setq paths (list-join closure-projects " "))
-  (setq command (format "grep -RPHn \"%s\" %s 2> /dev/null | awk -F\: '{print $1,$2}'" expression paths))
+  (setq paths (mapconcat 'identity closure-projects " "))
+  (setq command (format "grep -RHn --include \"*.js\" -e \"%s\" %s 2> /dev/null | awk -F\: '{print $1,$2}'" expression paths))
   ;; (message (format "Command: %s" command))
   (split-string (first (split-string (shell-command-to-string command) "\n")) " ")
   )
@@ -380,7 +444,7 @@
 (defun closure-provides-where (module)
   "Return the line and filename where a goog.provide() was found"
   (interactive)
-  (closure-match (format "^goog.provide\\('%s'\\);$" module))
+  (closure-match (format "^goog.provide('%s');$" module))
   )
 
 (defun closure-declaration-where (object value)
@@ -391,21 +455,34 @@
 
 (defun closure-super-class (module)
   "Get current super class, if any"
-  (interactive)
-  (setq file_name (if (string-match module (closure-class-name))
-                      (buffer-file-name)
-                    (closure-provides-where module)
-                    ))
-  ;; (message (format "File Name: %s" file_name))
-  (setq command (format "grep \"^goog.inherits\(%s, \" %s | sed 's/.*, \\\(.*\\\));/\\1/' | chomp" module file_name))
-  ;; (message (format "Command: %s, Filename: %s" command file_name))
-  (shell-command-to-string command)
+  (interactive)  
+  (if (string-match module (closure-class-name))
+      (save-excursion
+	(beginning-of-buffer)
+	(if (search-forward-regexp " * @extends {\\(.*\\)}" nil t)
+	    (match-string 1)
+	  (if (search-forward-regexp "^goog.inherits(.*, \\(.*\\))" nil t)
+	      (match-string 1)
+	    )
+	  )
+	)
+    (progn
+      (setq file_info (closure-provides-where module))
+      (setq file_name (pop file_info))
+      ;; (message (format "File Name: %s" file_name))
+      (setq command (format "grep -e \"^goog.inherits\(%s, \" %s | sed 's/.*, \\\(.*\\\));/\\1/' | tr -d '\\n'" module file_name))
+      ;; (message (format "Command: %s, Filename: %s" command file_name))
+      (shell-command-to-string command)
+      )
+    )
   )
 
 (defun closure-super-jump ()
   (interactive)
   (setq curr_class (closure-class-name))
-  (setq file_info (closure-provides-where (closure-super-class curr_class)))
+  (setq super_class (closure-super-class curr_class))
+  (message (format "Curr: %s, Super: %s" curr_class super_class))
+  (setq file_info (closure-provides-where super_class))
   ;; (message (format "FileInfo: %s" file_info))
   (if (> (length file_info) 1)
       (progn
@@ -417,6 +494,21 @@
         )
     (error "No super class found %s" curr_class)
     )
+  )
+
+
+(defun closure-current-expression ()
+  "Expression is: a word - Ex - foo, a function call - Ex foo(), a namespace - a.b.c"
+  (save-excursion
+    (let (beg variable)
+      (skip-chars-backward "A-Za-z0-9_.")
+      (setq beg (1- (point)))
+      (skip-chars-forward "A-Za-z0-9_.()")
+      (s-trim (buffer-substring beg (point))))))
+
+(defun message-current-expression () 
+  (interactive)
+  (message (format "Expression: %s" (closure-current-expression)))
   )
 
 (defun closure-current-module ()
@@ -453,6 +545,35 @@
             )
         (error "File not found for module: %s" module)))))
 
+(defun closure-update-extends ()
+  "Find the first extends , add the use line, then change the inherits line"
+  (interactive)
+  (save-excursion
+    (if (string-match "@extends {" (current-line))
+        (beginning-of-line)
+      (beginning-of-buffer))
+    (if (search-forward "@extends {")
+        (progn
+          (setq extends (closure-current-module))
+          (message "Found extends: %s" extends)
+          (closure-add-require-line)
+          (if (search-forward "goog.inherits" 'nil 't)
+              (progn
+                (search-forward ", ")
+                (zap-to-char 1 41) ; zap to right curly brace
+                (insert (format "%s)" extends)))
+            (progn
+              (message "insert inherits")
+              (search-forward " = function(")
+              (beginning-of-line)
+              (setq definition (closure-current-module))
+              (search-forward-regexp "^};")
+              (next-line)
+              (beginning-of-line)
+              (insert (format "goog.inherits(%s, %s);\n" definition extends))
+              ))))))
+
+
 (defvar closure-projects)
 (defun reload-closure-projects ()
   "Load the current list of projects."
@@ -474,6 +595,7 @@
  (local-set-key [(super c) ?a ?f] 'closure-abstract-function)
  (local-set-key [(super c) ?a ?r] 'closure-add-require-line)
  (local-set-key [(super c) ?c ?c] 'closure-insert-current-class)
+ (local-set-key [(super c) ?c ?f] 'closure-constructor-function)
  (local-set-key [(super c) ?g ?b] 'closure-insert-goog-base)
  (local-set-key [(super c) ?n ?a] 'closure-attribute-prefix)
  (local-set-key [(super c) ?n ?f] 'closure-new-function)
@@ -481,6 +603,7 @@
  (local-set-key [(super c) ?s ?f] 'closure-super-function)
  (local-set-key [(super c) ?s ?g] 'closure-insert-singleton-getter)
  (local-set-key [(super c) ?s ?r] 'closure-sort-requires-lines)
+ (local-set-key [(super c) ?u ?e] 'closure-update-extends)
  (local-set-key [(super c) ?u ?j] 'closure-update-javadoc)
 
  ; for-loop utilities
