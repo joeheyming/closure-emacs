@@ -26,16 +26,16 @@ Emacs keybindings for programming google closure.
   - super c s-g -> closure-insert-singleton-getter
     - Insert the singleton getter function at the cursor.
   - super c s-r -> closure-sort-require-lines
-   - Sort the require lines in the current module.
+    - Sort the require lines in the current module.
   - super c u-e -> closure-update-extends
-   - If you change @extends, run this function and it will update goog.inherits as well as add the require line.
+    - If you change @extends, run this function and it will update goog.inherits as well as add the require line.
   - super c u-j -> closure-update-javadoc
-   - Update the javadoc with the current function parameters (if changed) and add @private or @return if needed.
+    - Update the javadoc with the current function parameters (if changed) and add @private or @return if needed.
   - super c a-e -> closure-foreach-array
-   - Insert a goog.array.forEach at the cursor.  If an appropriate expression is found under the cursor, we try to use it as the first argument to the forEach function.
+    - Insert a goog.array.forEach at the cursor.  If an appropriate expression is found under the cursor, we try to use it as the first argument to the forEach function.
   - super c a-t -> closure-foreach-array-this
-   - Insert a goog.array.forEach (bound to this) at the cursor.  If an appropriate expression is found under the cursor, we try to use it as the first argument to the forEach function.
+    - Insert a goog.array.forEach (bound to this) at the cursor.  If an appropriate expression is found under the cursor, we try to use it as the first argument to the forEach function.
   - super c o-e -> closure-foreach-object
-   - Insert a goog.object.forEach at the cursor.  If an appropriate expression is found under the cursor, we try to use it as the first argument to the forEach function.
+    - Insert a goog.object.forEach at the cursor.  If an appropriate expression is found under the cursor, we try to use it as the first argument to the forEach function.
   - super c o-t -> closure-foreach-object-this
-   - Insert a goog.object.forEach (bound to this) at the cursor.  If an appropriate expression is found under the cursor, we try to use it as the first argument to the forEach function.
+    - Insert a goog.object.forEach (bound to this) at the cursor.  If an appropriate expression is found under the cursor, we try to use it as the first argument to the forEach function.
