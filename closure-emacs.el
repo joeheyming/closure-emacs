@@ -245,7 +245,7 @@
   (interactive)
   (setq params '())
   (save-excursion
-    (search-backward-regexp " \*/\n\\(.* =\\) function(")
+    (search-backward-regexp "^.* = function(")
     (search-backward "/**")
     (forward-line)
      (while (looking-at " \* ")
@@ -262,7 +262,7 @@
   "Return a list of all params in a function definition"
   (interactive)
   (save-excursion
-    (search-backward-regexp " \*/\n\\(.* =\\) function(")
+    (search-backward-regexp "^.*[ ]+=[ ]+function(")
     (search-forward "(")
     (setq start (point))
     (search-forward ")")
@@ -279,7 +279,7 @@
 (defun closure-insert-javadoc-param (param)
   "Find the above javadoc, put the param at the end"
   (save-excursion
-    (search-backward " */")
+    (search-backward "*/")
     (beginning-of-line)
     (insert " * @param {")
     (if (string-match "opt_" param)
@@ -289,7 +289,7 @@
 (defun closure-insert-function-param (param)
   "Find the above javadoc, put the param at the end"
   (save-excursion
-    (search-backward-regexp " \*/\n\\(.* =\\) function(")
+    (search-backward-regexp "^.*[ ]+=[ ]+function(")
     (if (string-match "function()" (current-line))
         (progn
           (search-forward "function(")
@@ -307,15 +307,16 @@
   (save-excursion
     (search-backward "/**")
     (setq start (point))
-    (search-forward " */")
+    (search-forward "*/")
     (buffer-substring start (point))
     )
   )
 
 (defun closure-add-return ()
   "Add a return @param if your current function has a return statement (Not reliable with anonymous functions...)"
+  (interactive)
   (save-excursion
-    (search-backward-regexp " \*/\n\\(.* =\\) function(")
+    (search-backward-regexp "^.*[ ]+=[ ]+function(")
     (setq start (point))
     (search-forward-regexp "^};")
     (setq function_def (buffer-substring start (point)))
@@ -324,10 +325,11 @@
         (progn
           (setq comment (closure-get-javadoc))
           (if (not(string-match "@return" comment))
-              (progn
-                (search-backward " */")
-                (beginning-of-line)
-                (insert " * @return {} .\n")))))))
+            (progn
+              (search-backward-regexp "^.*[ ]+=[ ]+function(")
+              (search-backward "*/")
+              (beginning-of-line)
+              (insert " * @return {} .\n")))))))
 
 (defun closure-add-private ()
   "Find the above javadoc and add a @private at the beginning"
@@ -338,7 +340,7 @@
     (if (string-match "_$" package)
         (progn
           (setq comment (closure-get-javadoc))
-          (search-backward-regexp " \*/\n\\(.* =\\) function(")
+          (search-backward-regexp "^.*[ ]+=[ ]+function(")
           (search-backward "/**")
           (end-of-line)
           (if (not(string-match "@private" comment))
@@ -351,8 +353,7 @@
   "Return the above function name"
   (interactive)
   (save-excursion
-    (search-backward-regexp " \*/\n.* = function")
-    (next-line)
+    (search-backward-regexp "^.*[ ]+=[ ]+function(")
     (beginning-of-line)
     (search-forward-regexp "\\(.*\\) = function")
     (setq package (match-string 1))
@@ -368,7 +369,7 @@
     (setq namespace (reverse (split-string package "\\.")))
     (setq func_name (pop namespace))
     (message (format "Function Name: %s" func_name))
-    (search-backward-regexp "\\(.*\\) = function")
+    (search-backward-regexp "^.*[ ]+=[ ]+function")
     (end-of-line)
     (insert "\n")
     (indent-according-to-mode)
