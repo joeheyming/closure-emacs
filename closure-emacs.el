@@ -83,6 +83,9 @@
   (s-trim-left (s-trim-right s)))
 ; xxx utility functions xxx ;
 
+(defun closure-search-function-declaration ()
+  (search-backward-regexp "^\\(.*[ ]+=[ ]+\\)?function[^(]*(")
+  )
 
 (defun closure-class-comment ()
   "Insert a class comment for an attribute"
@@ -245,7 +248,7 @@
   (interactive)
   (setq params '())
   (save-excursion
-    (search-backward-regexp "^.* = function(")
+    (closure-search-function-declaration)
     (search-backward "/**")
     (forward-line)
      (while (looking-at " \* ")
@@ -262,7 +265,7 @@
   "Return a list of all params in a function definition"
   (interactive)
   (save-excursion
-    (search-backward-regexp "^.*[ ]+=[ ]+function(")
+    (closure-search-function-declaration)
     (search-forward "(")
     (setq start (point))
     (search-forward ")")
@@ -286,19 +289,20 @@
         (insert "="))
     (insert (format "} %s .\n" param))))
 
-(defun closure-insert-function-param (param)
+(defun closure-insert-function-params (params)
   "Find the above javadoc, put the param at the end"
   (save-excursion
-    (search-backward-regexp "^.*[ ]+=[ ]+function(")
-    (if (string-match "function()" (current-line))
+    (closure-search-function-declaration)
+    (if (string-match "()" (current-line))
         (progn
-          (search-forward "function(")
-          (insert param)
+          (search-forward "(")
+          (insert (mapconcat 'identity params ", "))
           )
       (progn
         (search-forward ")")
         (backward-char)
-        (insert (format ", %s" param))
+        (insert ", ")
+        (insert (mapconcat 'identity params ", "))
         )
       )))
 
@@ -316,7 +320,7 @@
   "Add a return @param if your current function has a return statement (Not reliable with anonymous functions...)"
   (interactive)
   (save-excursion
-    (search-backward-regexp "^.*[ ]+=[ ]+function(")
+    (closure-search-function-declaration)
     (setq start (point))
     (search-forward-regexp "^};")
     (setq function_def (buffer-substring start (point)))
@@ -326,7 +330,7 @@
           (setq comment (closure-get-javadoc))
           (if (not(string-match "@return" comment))
             (progn
-              (search-backward-regexp "^.*[ ]+=[ ]+function(")
+              (closure-search-function-declaration)
               (search-backward "*/")
               (beginning-of-line)
               (insert " * @return {} .\n")))))))
@@ -340,7 +344,7 @@
     (if (string-match "_$" package)
         (progn
           (setq comment (closure-get-javadoc))
-          (search-backward-regexp "^.*[ ]+=[ ]+function(")
+          (closure-search-function-declaration)
           (search-backward "/**")
           (end-of-line)
           (if (not(string-match "@private" comment))
@@ -353,12 +357,18 @@
   "Return the above function name"
   (interactive)
   (save-excursion
-    (search-backward-regexp "^.*[ ]+=[ ]+function(")
+    (closure-search-function-declaration)
     (beginning-of-line)
-    (search-forward-regexp "\\(.*\\) = function")
-    (setq package (match-string 1))
-    (message (format "Package: %s" package))
-    package
+    (let (package)
+      (if (search-forward-regexp "\\(\\([^ ]+\\) = \\)?function\\([^(]+\\)?(" nil t)
+          (progn
+            (setq package (match-string 3))
+            (if (not package) (setq package (match-string 2)))
+            (message (format "Package: %s" package))
+            )
+        )
+      package
+      )
     )
   )
 
@@ -369,7 +379,7 @@
     (setq namespace (reverse (split-string package "\\.")))
     (setq func_name (pop namespace))
     (message (format "Function Name: %s" func_name))
-    (search-backward-regexp "^.*[ ]+=[ ]+function")
+    (closure-search-function-declaration)
     (end-of-line)
     (insert "\n")
     (indent-according-to-mode)
@@ -407,11 +417,8 @@
                      (message (format "Mark %s not found in javadoc" param))
                      (push param not_there)
                    ))))))
-   (loop for param in (reverse doc_params) do
-    (progn
-     (message (format "Doc Param not found in function: %s" param))
-     (closure-insert-function-param param)
-   ))
+    (message (format "Doc Params not found in function: %s" (reverse doc_params)))
+    (closure-insert-function-params (reverse doc_params))
    (loop for param in (reverse not_there) do
     (progn
      (message (format "Param not found in Javadoc: %s" param))
