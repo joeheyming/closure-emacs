@@ -292,7 +292,6 @@
 (defun closure-insert-function-params (params)
   "Find the above javadoc, put the param at the end"
   (save-excursion
-    (message (format "len %s" (length params)))
     (if (> (length params) 0)
         (progn
           (closure-search-function-declaration)
