@@ -292,19 +292,22 @@
 (defun closure-insert-function-params (params)
   "Find the above javadoc, put the param at the end"
   (save-excursion
-    (closure-search-function-declaration)
-    (if (string-match "()" (current-line))
+    (message (format "len %s" (length params)))
+    (if (> (length params) 0)
         (progn
-          (search-forward "(")
-          (insert (mapconcat 'identity params ", "))
-          )
-      (progn
-        (search-forward ")")
-        (backward-char)
-        (insert ", ")
-        (insert (mapconcat 'identity params ", "))
-        )
-      )))
+          (closure-search-function-declaration)
+          (if (string-match "()" (current-line) )
+              (progn
+                (search-forward "(")
+                (insert (mapconcat 'identity params ", "))
+                )
+            (progn
+              (search-forward ")")
+              (backward-char)
+              (insert ", ")
+              (insert (mapconcat 'identity params ", "))
+              )
+            )))))
 
 (defun closure-get-javadoc ()
   "Fetch the above javadoc comment"
